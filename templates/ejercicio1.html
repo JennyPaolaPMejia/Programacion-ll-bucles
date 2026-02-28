@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejercicio 1: Matriz Espiral</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #22c55e;
+            --green-dark: #16a34a;
+            --green-glow: #4ade80;
+            --green-dim: rgba(34,197,94,0.15);
+            --black: #050a05;
+            --white: #f0fff4;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background-color: var(--black);
+            color: var(--white);
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* CURSOR */
+        .cursor {
+            position: fixed;
+            width: 12px; height: 12px;
+            background: var(--green);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background 0.2s;
+            mix-blend-mode: screen;
+        }
+        .cursor-ring {
+            position: fixed;
+            width: 36px; height: 36px;
+            border: 1.5px solid var(--green);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            opacity: 0.5;
+        }
+
+        /* BACKGROUND */
+        .bg-grid {
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            z-index: 0;
+        }
+        .bg-grid::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.07) 0%, transparent 70%);
+        }
+
+        .scanline {
+            position: fixed; top: -100%; left: 0;
+            width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(34,197,94,0.35), transparent);
+            z-index: 1;
+            animation: scan 6s linear infinite;
+        }
+        @keyframes scan {
+            0%   { top: -2px; }
+            100% { top: 100vh; }
+        }
+
+        /* CORNERS */
+        .corner {
+            position: fixed; width: 50px; height: 50px;
+            opacity: 0.2; z-index: 5;
+        }
+        .corner.tl { top: 16px; left: 16px; border-top: 1px solid var(--green); border-left: 1px solid var(--green); }
+        .corner.tr { top: 16px; right: 16px; border-top: 1px solid var(--green); border-right: 1px solid var(--green); }
+        .corner.bl { bottom: 16px; left: 16px; border-bottom: 1px solid var(--green); border-left: 1px solid var(--green); }
+        .corner.br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--green); border-right: 1px solid var(--green); }
+
+        /* HEADER */
+        header {
+            position: relative; z-index: 10;
+            padding: 48px 40px 36px;
+            text-align: center;
+            animation: fadeDown 0.7s ease both;
+        }
+
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: rgba(34,197,94,0.6);
+            text-decoration: none;
+            border: 1px solid rgba(34,197,94,0.2);
+            padding: 6px 14px;
+            border-radius: 2px;
+            margin-bottom: 28px;
+            background: rgba(34,197,94,0.04);
+            transition: color 0.25s, border-color 0.25s, background 0.25s;
+        }
+        .back-link:hover {
+            color: var(--green);
+            border-color: rgba(34,197,94,0.5);
+            background: rgba(34,197,94,0.08);
+        }
+        .back-link::before { content: '←'; font-size: 14px; }
+
+        .badge {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: var(--green);
+            opacity: 0.6;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: clamp(2.4rem, 6vw, 4.5rem);
+            font-weight: 800;
+            letter-spacing: -1.5px;
+            line-height: 1;
+            background: linear-gradient(135deg, #fff 30%, var(--green-glow) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--green);
+            letter-spacing: 3px;
+            margin-top: 10px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .divider {
+            position: relative; z-index: 10;
+            width: min(600px, 90%);
+            margin: 0 auto 44px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(34,197,94,0.4), transparent);
+        }
+
+        /* FORM */
+        .form-wrapper {
+            position: relative; z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            animation: fadeUp 0.6s 0.2s ease both;
+        }
+
+        .form-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: rgba(240,255,244,0.45);
+            margin-bottom: 4px;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(10,20,10,0.7);
+            border: 1px solid rgba(34,197,94,0.2);
+            border-radius: 4px;
+            padding: 6px 6px 6px 16px;
+            backdrop-filter: blur(8px);
+            transition: border-color 0.3s;
+        }
+        .form-row:focus-within {
+            border-color: rgba(34,197,94,0.6);
+            box-shadow: 0 0 0 1px rgba(34,197,94,0.1), 0 8px 24px rgba(34,197,94,0.08);
+        }
+
+        input[type="number"] {
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: 'Space Mono', monospace;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--white);
+            width: 90px;
+            text-align: center;
+            -moz-appearance: textfield;
+            cursor: none;
+        }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+        .btn-generate {
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 12px 22px;
+            background: var(--green);
+            color: #050a05;
+            border: none;
+            border-radius: 3px;
+            cursor: none;
+            text-transform: uppercase;
+            transition: background 0.25s, transform 0.2s, box-shadow 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-generate::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+        .btn-generate:hover {
+            background: var(--green-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(34,197,94,0.3);
+        }
+        .btn-generate:hover::before { opacity: 1; }
+        .btn-generate:active { transform: translateY(1px); }
+
+        /* TABLE */
+        .table-section {
+            position: relative; z-index: 10;
+            margin-top: 48px;
+            padding: 0 20px 24px;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .matrix-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 3px;
+            color: rgba(34,197,94,0.5);
+            margin-bottom: 20px;
+        }
+
+        table {
+            margin: auto;
+            border-collapse: separate;
+            border-spacing: 4px;
+            font-family: 'Space Mono', monospace;
+            font-size: 16px;
+        }
+
+        td {
+            width: 52px;
+            height: 52px;
+            text-align: center;
+            vertical-align: middle;
+            background: rgba(10,20,10,0.8);
+            border: 1px solid rgba(34,197,94,0.12);
+            border-radius: 3px;
+            color: rgba(240,255,244,0.55);
+            font-weight: 700;
+            transition: background 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+        }
+
+        td.activa {
+            background: rgba(34,197,94,0.15);
+            border-color: var(--green);
+            color: var(--green-glow);
+            box-shadow: 0 0 14px rgba(34,197,94,0.35), inset 0 0 10px rgba(34,197,94,0.08);
+            transform: scale(1.06);
+        }
+
+        td.trail {
+            background: rgba(34,197,94,0.06);
+            border-color: rgba(34,197,94,0.3);
+            color: rgba(34,197,94,0.5);
+            transform: scale(1.0);
+        }
+
+        /* BACK BUTTON */
+        .volver {
+            position: relative; z-index: 10;
+            margin: 44px auto 60px;
+            text-align: center;
+        }
+
+        .btn-back {
+            font-family: 'Syne', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            padding: 12px 28px;
+            background: transparent;
+            color: var(--green);
+            border: 1px solid rgba(34,197,94,0.35);
+            border-radius: 3px;
+            cursor: none;
+            text-transform: uppercase;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+        }
+        .btn-back:hover {
+            background: rgba(34,197,94,0.08);
+            border-color: var(--green);
+            box-shadow: 0 0 20px rgba(34,197,94,0.15);
+            transform: translateY(-1px);
+        }
+
+        /* PROGRESS BAR */
+        .progress-bar-wrap {
+            position: relative; z-index: 10;
+            width: min(400px, 80%);
+            margin: 20px auto 0;
+            height: 2px;
+            background: rgba(34,197,94,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .progress-bar-wrap.visible { opacity: 1; }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--green);
+            border-radius: 2px;
+            transition: width 0.12s linear;
+            box-shadow: 0 0 8px var(--green);
+        }
+
+        /* STEP COUNTER */
+        .step-counter {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            color: rgba(34,197,94,0.45);
+            letter-spacing: 2px;
+            position: relative; z-index: 10;
+            margin-top: 10px;
+            min-height: 18px;
+        }
+
+        /* KEYFRAMES */
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* PARTICLES */
+        .particles { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+        .particle {
+            position: absolute;
+            width: 2px; height: 2px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: float linear infinite;
+            opacity: 0;
+        }
+        @keyframes float {
+            0%   { transform: translateY(100vh); opacity: 0; }
+            10%  { opacity: 0.5; }
+            90%  { opacity: 0.2; }
+            100% { transform: translateY(-10vh); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cursor" id="cursor"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+
+    <div class="bg-grid"></div>
+    <div class="scanline"></div>
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div class="particles" id="particles"></div>
+
+    <header>
+        <a href="/" class="back-link">Volver al menú</a>
+        <div class="badge">EJERCICIO 01</div>
+        <h1>Matriz Espiral</h1>
+        <h2>Recorrido en espiral</h2>
+    </header>
+
+    <div class="divider"></div>
+
+    <div class="form-wrapper">
+        <div class="form-label">INGRESE EL TAMAÑO DE LA MATRIZ</div>
+        <form method="POST">
+            <div class="form-row">
+                <input type="number" id="numero" name="numero" required min="3" placeholder="N">
+                <button type="submit" class="btn-generate">Generar</button>
+            </div>
+        </form>
+    </div>
+
+    {% if matriz %}
+    <div class="table-section">
+        <div class="matrix-label">MATRIZ GENERADA · ANIMACIÓN ESPIRAL</div>
+        <div class="progress-bar-wrap" id="progressWrap">
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="step-counter" id="stepCounter">&nbsp;</div>
+        <br>
+        <table id="tabla">
+            {% for fila in matriz %}
+            <tr>
+                {% for num in fila %}
+                <td class="celda">{{ num }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="volver">
+        <a href="/" class="btn-back">← Menú Principal</a>
+    </div>
+
+    {% if matriz %}
+    <script>
+        let celdas = document.querySelectorAll(".celda");
+        let n = Math.sqrt(celdas.length);
+        let arriba = 0, abajo = n - 1, izquierda = 0, derecha = n - 1;
+        let orden = [];
+
+        while (arriba <= abajo && izquierda <= derecha) {
+            for (let j = izquierda; j <= derecha; j++) orden.push(arriba * n + j);
+            arriba++;
+            for (let i = arriba; i <= abajo; i++) orden.push(i * n + derecha);
+            derecha--;
+            for (let j = derecha; j >= izquierda; j--) orden.push(abajo * n + j);
+            abajo--;
+            for (let i = abajo; i >= arriba; i--) orden.push(i * n + izquierda);
+            izquierda++;
+        }
+
+        const progressWrap = document.getElementById('progressWrap');
+        const progressFill = document.getElementById('progressFill');
+        const stepCounter  = document.getElementById('stepCounter');
+        progressWrap.classList.add('visible');
+
+        let i = 0;
+        const total = orden.length;
+
+        function animar() {
+            if (i < total) {
+                // Remove active glow from previous, keep trail
+                if (i > 0) {
+                    celdas[orden[i - 1]].classList.remove("activa");
+                    celdas[orden[i - 1]].classList.add("trail");
+                }
+                celdas[orden[i]].classList.add("activa");
+                celdas[orden[i]].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                // Update progress
+                const pct = ((i + 1) / total * 100).toFixed(1);
+                progressFill.style.width = pct + '%';
+                stepCounter.textContent = `PASO ${i + 1} / ${total}`;
+
+                i++;
+                setTimeout(animar, 130);
+            } else {
+                // Final state: keep last cell lit
+                stepCounter.textContent = `✓ ESPIRAL COMPLETA · ${total} CELDAS`;
+                progressFill.style.width = '100%';
+            }
+        }
+
+        // Small delay so page renders first
+        setTimeout(animar, 400);
+    </script>
+    {% endif %}
+
+    <script>
+        // CUSTOM CURSOR
+        const cursor = document.getElementById('cursor');
+        const ring   = document.getElementById('cursorRing');
+        let mx = 0, my = 0, rx = 0, ry = 0;
+
+        document.addEventListener('mousemove', e => {
+            mx = e.clientX; my = e.clientY;
+            cursor.style.left = mx + 'px';
+            cursor.style.top  = my + 'px';
+        });
+
+        function animRing() {
+            rx += (mx - rx) * 0.12;
+            ry += (my - ry) * 0.12;
+            ring.style.left = rx + 'px';
+            ring.style.top  = ry + 'px';
+            requestAnimationFrame(animRing);
+        }
+        animRing();
+
+        // Cursor grow on interactive elements
+        document.querySelectorAll('button, a, input').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.width = '20px';
+                cursor.style.height = '20px';
+                cursor.style.background = 'rgba(34,197,94,0.5)';
+                ring.style.width = '50px';
+                ring.style.height = '50px';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.width = '12px';
+                cursor.style.height = '12px';
+                cursor.style.background = 'var(--green)';
+                ring.style.width = '36px';
+                ring.style.height = '36px';
+            });
+        });
+
+        // PARTICLES
+        const container = document.getElementById('particles');
+        for (let p = 0; p < 14; p++) {
+            const dot = document.createElement('div');
+            dot.className = 'particle';
+            dot.style.left = Math.random() * 100 + '%';
+            dot.style.animationDuration = (9 + Math.random() * 12) + 's';
+            dot.style.animationDelay    = (Math.random() * 10) + 's';
+            container.appendChild(dot);
+        }
+    </script>
+
+</body>
+</html>

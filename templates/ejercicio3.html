@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejercicio 3: Series de Taylor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #22c55e;
+            --green-dark: #16a34a;
+            --green-glow: #4ade80;
+            --black: #050a05;
+            --white: #f0fff4;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background-color: var(--black);
+            color: var(--white);
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* CURSOR */
+        .cursor {
+            position: fixed; width: 12px; height: 12px;
+            background: var(--green); border-radius: 50%;
+            pointer-events: none; z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background 0.2s;
+            mix-blend-mode: screen;
+        }
+        .cursor-ring {
+            position: fixed; width: 36px; height: 36px;
+            border: 1.5px solid var(--green); border-radius: 50%;
+            pointer-events: none; z-index: 9998;
+            transform: translate(-50%, -50%); opacity: 0.5;
+        }
+
+        /* BG */
+        .bg-grid {
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px);
+            background-size: 48px 48px; z-index: 0;
+        }
+        .bg-grid::after {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.07) 0%, transparent 70%);
+        }
+        .scanline {
+            position: fixed; top: -2px; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(34,197,94,0.35), transparent);
+            z-index: 1; animation: scan 6s linear infinite;
+        }
+        @keyframes scan { to { top: 100vh; } }
+
+        .corner { position: fixed; width: 50px; height: 50px; opacity: 0.2; z-index: 5; }
+        .corner.tl { top: 16px; left: 16px; border-top: 1px solid var(--green); border-left: 1px solid var(--green); }
+        .corner.tr { top: 16px; right: 16px; border-top: 1px solid var(--green); border-right: 1px solid var(--green); }
+        .corner.bl { bottom: 16px; left: 16px; border-bottom: 1px solid var(--green); border-left: 1px solid var(--green); }
+        .corner.br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--green); border-right: 1px solid var(--green); }
+
+        .particles { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+        .particle {
+            position: absolute; width: 2px; height: 2px;
+            background: var(--green); border-radius: 50%;
+            animation: float linear infinite; opacity: 0;
+        }
+        @keyframes float {
+            0%   { transform: translateY(100vh); opacity: 0; }
+            10%  { opacity: 0.5; } 90%  { opacity: 0.2; }
+            100% { transform: translateY(-10vh); opacity: 0; }
+        }
+
+        /* HEADER */
+        header {
+            position: relative; z-index: 10;
+            padding: 48px 40px 28px;
+            text-align: center;
+            animation: fadeDown 0.7s ease both;
+        }
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            letter-spacing: 3px; color: rgba(34,197,94,0.6);
+            text-decoration: none; border: 1px solid rgba(34,197,94,0.2);
+            padding: 6px 14px; border-radius: 2px; margin-bottom: 24px;
+            background: rgba(34,197,94,0.04);
+            transition: color 0.25s, border-color 0.25s, background 0.25s;
+        }
+        .back-link:hover { color: var(--green); border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.08); }
+
+        .badge { font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: 4px; color: var(--green); opacity: 0.6; margin-bottom: 10px; }
+
+        h1 {
+            font-size: clamp(2.4rem, 6vw, 4.5rem); font-weight: 800;
+            letter-spacing: -1.5px; line-height: 1;
+            background: linear-gradient(135deg, #fff 30%, var(--green-glow) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        h1 span {
+            display: block; font-size: 0.5em; letter-spacing: 3px;
+            color: var(--green); -webkit-text-fill-color: var(--green);
+            margin-top: 8px; font-weight: 600;
+        }
+
+        .divider {
+            position: relative; z-index: 10;
+            width: min(700px, 90%); margin: 20px auto 40px;
+            height: 1px; background: linear-gradient(90deg, transparent, rgba(34,197,94,0.4), transparent);
+        }
+
+        /* FORMULA DISPLAY */
+        .formula-strip {
+            position: relative; z-index: 10;
+            max-width: 680px; margin: 0 auto 32px;
+            padding: 0 20px;
+            animation: fadeUp 0.5s 0.1s ease both;
+        }
+        .formula-box {
+            background: rgba(10,20,10,0.8);
+            border: 1px solid rgba(34,197,94,0.15);
+            border-radius: 4px;
+            padding: 18px 24px;
+            display: flex; align-items: center; justify-content: center;
+            gap: 12px;
+            backdrop-filter: blur(8px);
+            font-family: 'Space Mono', monospace;
+            overflow-x: auto;
+        }
+        .formula-label {
+            font-size: 10px; letter-spacing: 3px;
+            color: rgba(34,197,94,0.45); white-space: nowrap;
+        }
+        .formula-text {
+            font-size: 15px; color: rgba(240,255,244,0.7);
+            white-space: nowrap;
+        }
+        .formula-text span { color: var(--green); }
+
+        /* FORM */
+        .form-panel {
+            position: relative; z-index: 10;
+            max-width: 680px; margin: 0 auto 32px;
+            padding: 0 20px;
+            animation: fadeUp 0.6s 0.2s ease both;
+        }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+        .field {
+            background: rgba(10,20,10,0.8);
+            border: 1px solid rgba(34,197,94,0.15);
+            border-radius: 4px; padding: 14px 16px 12px;
+            display: flex; flex-direction: column; gap: 6px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            backdrop-filter: blur(8px);
+        }
+        .field:focus-within {
+            border-color: rgba(34,197,94,0.5);
+            box-shadow: 0 0 0 1px rgba(34,197,94,0.1), 0 6px 20px rgba(34,197,94,0.07);
+        }
+        .field label {
+            font-family: 'Space Mono', monospace; font-size: 10px;
+            letter-spacing: 3px; color: rgba(34,197,94,0.6); text-transform: uppercase;
+        }
+        .field input {
+            background: transparent; border: none; outline: none;
+            font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700;
+            color: var(--white); width: 100%; cursor: none;
+            -moz-appearance: textfield;
+        }
+        .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .field-hint {
+            font-family: 'Space Mono', monospace; font-size: 9px;
+            letter-spacing: 1px; color: rgba(34,197,94,0.3);
+            margin-top: 2px;
+        }
+
+        /* SLIDER for iterations */
+        .slider-wrap { display: flex; flex-direction: column; gap: 8px; }
+        .slider-row { display: flex; align-items: center; gap: 12px; }
+        .rc-display {
+            font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700;
+            color: var(--white); min-width: 48px; text-align: center;
+        }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 3px;
+            background: rgba(34,197,94,0.15); border-radius: 2px; outline: none;
+            cursor: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px; height: 16px;
+            background: var(--green); border-radius: 50%;
+            box-shadow: 0 0 8px rgba(34,197,94,0.5);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
+            box-shadow: 0 0 16px rgba(34,197,94,0.7);
+        }
+        .range-labels {
+            display: flex; justify-content: space-between;
+            font-family: 'Space Mono', monospace; font-size: 9px;
+            color: rgba(34,197,94,0.3); letter-spacing: 1px; margin-top: 4px;
+        }
+
+        .btn-generate {
+            width: 100%; padding: 16px;
+            font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800;
+            letter-spacing: 4px; text-transform: uppercase;
+            background: var(--green); color: #050a05;
+            border: none; border-radius: 3px; cursor: none;
+            position: relative; overflow: hidden;
+            transition: background 0.25s, transform 0.2s, box-shadow 0.25s;
+            margin-top: 12px;
+        }
+        .btn-generate::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.25), transparent);
+            opacity: 0; transition: opacity 0.25s;
+        }
+        .btn-generate:hover { background: var(--green-dark); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(34,197,94,0.3); }
+        .btn-generate:hover::before { opacity: 1; }
+        .btn-generate:active { transform: translateY(1px); }
+
+        /* LOADING STATE */
+        .btn-generate.loading {
+            background: var(--green-dark); pointer-events: none;
+            color: transparent;
+        }
+        .btn-generate.loading::after {
+            content: '';
+            position: absolute; top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            border: 2px solid rgba(5,10,5,0.3);
+            border-top-color: #050a05;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+        /* VIDEO SECTION */
+        .video-section {
+            position: relative; z-index: 10;
+            max-width: 720px; margin: 0 auto 40px;
+            padding: 0 20px;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        .result-label {
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            letter-spacing: 3px; color: rgba(34,197,94,0.5);
+            margin-bottom: 20px; text-align: center;
+        }
+
+        .video-card {
+            background: rgba(10,20,10,0.85);
+            border: 1px solid rgba(34,197,94,0.2);
+            border-radius: 6px; overflow: hidden;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,197,94,0.05);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .video-card:hover {
+            border-color: rgba(34,197,94,0.4);
+            box-shadow: 0 24px 70px rgba(0,0,0,0.6), 0 0 40px rgba(34,197,94,0.08);
+        }
+
+        .video-card-header {
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(34,197,94,0.1);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.red    { background: #ef4444; }
+        .dot.yellow { background: #eab308; }
+        .dot.green  { background: var(--green); }
+        .video-card-title {
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            letter-spacing: 2px; color: rgba(34,197,94,0.5);
+            margin-left: 6px;
+        }
+
+        .video-wrap { position: relative; }
+        .video-wrap::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(34,197,94,0.04) 0%, transparent 50%);
+            pointer-events: none; z-index: 1;
+        }
+
+        video {
+            width: 100%; display: block;
+            background: #000;
+        }
+
+        /* VIDEO GLOW ANIMATION */
+        .video-glow {
+            position: absolute; inset: -1px;
+            border-radius: 6px;
+            background: transparent;
+            box-shadow: 0 0 0 1px rgba(34,197,94,0);
+            animation: videoGlow 3s ease-in-out infinite;
+            pointer-events: none; z-index: 2;
+        }
+        @keyframes videoGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(34,197,94,0.05); }
+            50%       { box-shadow: 0 0 40px rgba(34,197,94,0.18); }
+        }
+
+        /* CONVERGENCE VISUALIZER */
+        .convergence-strip {
+            position: relative; z-index: 10;
+            max-width: 680px; margin: 0 auto 32px;
+            padding: 0 20px;
+        }
+        .convergence-box {
+            background: rgba(10,20,10,0.8);
+            border: 1px solid rgba(34,197,94,0.15);
+            border-radius: 4px; padding: 16px 20px;
+            backdrop-filter: blur(8px);
+        }
+        .conv-label {
+            font-family: 'Space Mono', monospace; font-size: 10px;
+            letter-spacing: 3px; color: rgba(34,197,94,0.4); margin-bottom: 10px; text-align: left;
+        }
+        .conv-bar-track {
+            height: 6px; background: rgba(34,197,94,0.08);
+            border-radius: 3px; overflow: hidden; position: relative;
+        }
+        .conv-bar-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--green-dark), var(--green-glow));
+            border-radius: 3px;
+            box-shadow: 0 0 10px rgba(34,197,94,0.4);
+            transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .conv-ticks {
+            display: flex; justify-content: space-between; margin-top: 6px;
+            font-family: 'Space Mono', monospace; font-size: 9px;
+            color: rgba(34,197,94,0.25); letter-spacing: 1px;
+        }
+
+        /* RIPPLE */
+        .ripple {
+            position: absolute; border-radius: 50%;
+            background: rgba(34,197,94,0.25);
+            transform: scale(0); animation: rippleAnim 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
+        /* BACK */
+        .volver { position: relative; z-index: 10; text-align: center; margin: 8px 0 60px; }
+        .btn-back {
+            font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+            letter-spacing: 3px; padding: 12px 32px;
+            background: transparent; color: var(--green);
+            border: 1px solid rgba(34,197,94,0.35); border-radius: 3px;
+            cursor: none; text-transform: uppercase; text-decoration: none; display: inline-block;
+            transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+        }
+        .btn-back:hover { background: rgba(34,197,94,0.08); border-color: var(--green); box-shadow: 0 0 20px rgba(34,197,94,0.15); transform: translateY(-1px); }
+
+        @keyframes fadeDown { from { opacity:0; transform:translateY(-18px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp   { from { opacity:0; transform:translateY(20px);  } to { opacity:1; transform:translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="cursor" id="cursor"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+    <div class="bg-grid"></div>
+    <div class="scanline"></div>
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+    <div class="particles" id="particles"></div>
+
+    <header>
+        <a href="/" class="back-link">← Volver al menú</a>
+        <div class="badge">EJERCICIO 03</div>
+        <h1>Series de Taylor<span>Aproximación Numérica</span></h1>
+    </header>
+    <div class="divider"></div>
+
+    <!-- FORMULA STRIP -->
+    <div class="formula-strip">
+        <div class="formula-box">
+            <span class="formula-label">FÓRMULA</span>
+            <span class="formula-text">
+                f(x) = <span>∑</span> f<sup>(n)</sup>(a) · (x−a)<sup>n</sup> / n!
+            </span>
+        </div>
+    </div>
+
+    <!-- FORM -->
+    <div class="form-panel">
+        <form method="POST" id="mainForm">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="x">Valor Final de x</label>
+                    <input type="number" id="x" step="any" name="x" required placeholder="3.14">
+                    <span class="field-hint">ACEPTA DECIMALES</span>
+                </div>
+                <div class="field">
+                    <label for="rc">Iteraciones</label>
+                    <div class="slider-wrap">
+                        <div class="slider-row">
+                            <div class="rc-display" id="rcDisplay">10</div>
+                        </div>
+                        <input type="range" id="rcSlider" min="1" max="100" value="10" oninput="updateRc(this.value)">
+                        <div class="range-labels"><span>1</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+                    </div>
+                    <!-- hidden input for backend -->
+                    <input type="number" id="rc" name="rc" value="10" style="display:none">
+                </div>
+            </div>
+
+            <!-- CONVERGENCE PREVIEW -->
+            <div class="convergence-box" style="margin-bottom:12px;">
+                <div class="conv-label">PRECISIÓN ESTIMADA</div>
+                <div class="conv-bar-track">
+                    <div class="conv-bar-fill" id="convFill"></div>
+                </div>
+                <div class="conv-ticks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+            </div>
+
+            <button type="submit" class="btn-generate" id="btnGen">
+                ⚡ Calcular Serie
+            </button>
+        </form>
+    </div>
+
+    {% if video %}
+    <!-- VIDEO RESULT -->
+    <div class="video-section">
+        <div class="result-label">ANIMACIÓN GENERADA · CONVERGENCIA VISUALIZADA</div>
+        <div class="video-card" style="position:relative;">
+            <div class="video-glow"></div>
+            <div class="video-card-header">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+                <span class="video-card-title">SERIE DE TAYLOR · OUTPUT.MP4</span>
+            </div>
+            <div class="video-wrap">
+                <video controls>
+                    <source src="{{ url_for('static', filename=video) }}" type="video/mp4">
+                </video>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="volver">
+        <a href="/" class="btn-back">← Menú Principal</a>
+    </div>
+
+    <script>
+        // CURSOR
+        const cursor = document.getElementById('cursor');
+        const ring   = document.getElementById('cursorRing');
+        let mx=0, my=0, rx=0, ry=0;
+        document.addEventListener('mousemove', e => {
+            mx=e.clientX; my=e.clientY;
+            cursor.style.left=mx+'px'; cursor.style.top=my+'px';
+        });
+        function animRing() {
+            rx+=(mx-rx)*0.12; ry+=(my-ry)*0.12;
+            ring.style.left=rx+'px'; ring.style.top=ry+'px';
+            requestAnimationFrame(animRing);
+        }
+        animRing();
+        document.querySelectorAll('button, a, input, video').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.width='20px'; cursor.style.height='20px';
+                cursor.style.background='rgba(34,197,94,0.5)';
+                ring.style.width='50px'; ring.style.height='50px';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.width='12px'; cursor.style.height='12px';
+                cursor.style.background='var(--green)';
+                ring.style.width='36px'; ring.style.height='36px';
+            });
+        });
+
+        // PARTICLES
+        const pc = document.getElementById('particles');
+        for(let i=0;i<16;i++){
+            const d=document.createElement('div'); d.className='particle';
+            d.style.left=Math.random()*100+'%';
+            d.style.animationDuration=(9+Math.random()*12)+'s';
+            d.style.animationDelay=(Math.random()*10)+'s';
+            pc.appendChild(d);
+        }
+
+        // SLIDER -> HIDDEN INPUT + DISPLAY + CONVERGENCE BAR
+        function updateRc(val) {
+            document.getElementById('rcDisplay').textContent = val;
+            document.getElementById('rc').value = val;
+            const pct = Math.min(100, Math.round(Math.log(val+1) / Math.log(101) * 100));
+            document.getElementById('convFill').style.width = pct + '%';
+        }
+        // Init bar on load
+        setTimeout(() => updateRc(document.getElementById('rcSlider').value), 300);
+
+        // RIPPLE
+        document.getElementById('btnGen').addEventListener('click', function(e) {
+            const r = document.createElement('span'); r.className='ripple';
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            r.style.width=r.style.height=size+'px';
+            r.style.left=(e.clientX-rect.left-size/2)+'px';
+            r.style.top=(e.clientY-rect.top-size/2)+'px';
+            this.appendChild(r);
+            setTimeout(()=>r.remove(), 700);
+        });
+
+        // LOADING STATE
+        document.getElementById('mainForm').addEventListener('submit', function() {
+            const btn = document.getElementById('btnGen');
+            btn.classList.add('loading');
+            btn.textContent = '';
+        });
+
+        // VIDEO glow pulse when playing
+        const vid = document.querySelector('video');
+        if(vid) {
+            vid.addEventListener('play', () => {
+                document.querySelector('.video-card').style.borderColor = 'rgba(34,197,94,0.5)';
+                document.querySelector('.video-card').style.boxShadow = '0 24px 70px rgba(0,0,0,0.6), 0 0 50px rgba(34,197,94,0.15)';
+            });
+            vid.addEventListener('pause', () => {
+                document.querySelector('.video-card').style.borderColor = '';
+                document.querySelector('.video-card').style.boxShadow = '';
+            });
+        }
+    </script>
+</body>
+</html>

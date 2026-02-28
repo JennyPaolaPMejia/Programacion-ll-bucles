@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejercicio 2: Tablas de Multiplicar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #22c55e;
+            --green-dark: #16a34a;
+            --green-glow: #4ade80;
+            --black: #050a05;
+            --white: #f0fff4;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Syne', sans-serif;
+            background-color: var(--black);
+            color: var(--white);
+            min-height: 100vh;
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* CURSOR */
+        .cursor {
+            position: fixed; width: 12px; height: 12px;
+            background: var(--green); border-radius: 50%;
+            pointer-events: none; z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: width 0.2s, height 0.2s, background 0.2s;
+            mix-blend-mode: screen;
+        }
+        .cursor-ring {
+            position: fixed; width: 36px; height: 36px;
+            border: 1.5px solid var(--green); border-radius: 50%;
+            pointer-events: none; z-index: 9998;
+            transform: translate(-50%, -50%); opacity: 0.5;
+        }
+
+        /* BG */
+        .bg-grid {
+            position: fixed; inset: 0;
+            background-image:
+                linear-gradient(rgba(34,197,94,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34,197,94,0.04) 1px, transparent 1px);
+            background-size: 48px 48px; z-index: 0;
+        }
+        .bg-grid::after {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,197,94,0.07) 0%, transparent 70%);
+        }
+        .scanline {
+            position: fixed; top: -2px; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(34,197,94,0.35), transparent);
+            z-index: 1; animation: scan 6s linear infinite;
+        }
+        @keyframes scan { to { top: 100vh; } }
+
+        .corner { position: fixed; width: 50px; height: 50px; opacity: 0.2; z-index: 5; }
+        .corner.tl { top: 16px; left: 16px; border-top: 1px solid var(--green); border-left: 1px solid var(--green); }
+        .corner.tr { top: 16px; right: 16px; border-top: 1px solid var(--green); border-right: 1px solid var(--green); }
+        .corner.bl { bottom: 16px; left: 16px; border-bottom: 1px solid var(--green); border-left: 1px solid var(--green); }
+        .corner.br { bottom: 16px; right: 16px; border-bottom: 1px solid var(--green); border-right: 1px solid var(--green); }
+
+        .particles { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+        .particle {
+            position: absolute; width: 2px; height: 2px;
+            background: var(--green); border-radius: 50%;
+            animation: float linear infinite; opacity: 0;
+        }
+        @keyframes float {
+            0%   { transform: translateY(100vh); opacity: 0; }
+            10%  { opacity: 0.5; }
+            90%  { opacity: 0.2; }
+            100% { transform: translateY(-10vh); opacity: 0; }
+        }
+
+        /* HEADER */
+        header {
+            position: relative; z-index: 10;
+            padding: 48px 40px 28px;
+            text-align: center;
+            animation: fadeDown 0.7s ease both;
+        }
+
+        .back-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            letter-spacing: 3px; color: rgba(34,197,94,0.6);
+            text-decoration: none; border: 1px solid rgba(34,197,94,0.2);
+            padding: 6px 14px; border-radius: 2px; margin-bottom: 24px;
+            background: rgba(34,197,94,0.04);
+            transition: color 0.25s, border-color 0.25s, background 0.25s;
+        }
+        .back-link:hover { color: var(--green); border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.08); }
+
+        .badge {
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            letter-spacing: 4px; color: var(--green); opacity: 0.6; margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: clamp(2.4rem, 6vw, 4.5rem); font-weight: 800;
+            letter-spacing: -1.5px; line-height: 1;
+            background: linear-gradient(135deg, #fff 30%, var(--green-glow) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        h1 span { display: block; font-size: 0.5em; letter-spacing: 3px; color: var(--green); -webkit-text-fill-color: var(--green); margin-top: 8px; font-weight: 600; }
+
+        .divider {
+            position: relative; z-index: 10;
+            width: min(700px, 90%); margin: 20px auto 36px;
+            height: 1px; background: linear-gradient(90deg, transparent, rgba(34,197,94,0.4), transparent);
+        }
+
+        /* FORM */
+        .form-panel {
+            position: relative; z-index: 10;
+            max-width: 680px; margin: 0 auto 20px;
+            padding: 0 20px;
+            animation: fadeUp 0.6s 0.2s ease both;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .field {
+            background: rgba(10,20,10,0.8);
+            border: 1px solid rgba(34,197,94,0.15);
+            border-radius: 4px;
+            padding: 14px 16px 12px;
+            display: flex; flex-direction: column; gap: 6px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            backdrop-filter: blur(8px);
+        }
+        .field:focus-within {
+            border-color: rgba(34,197,94,0.5);
+            box-shadow: 0 0 0 1px rgba(34,197,94,0.1), 0 6px 20px rgba(34,197,94,0.07);
+        }
+
+        .field label {
+            font-family: 'Space Mono', monospace; font-size: 10px;
+            letter-spacing: 3px; color: rgba(34,197,94,0.6); text-transform: uppercase;
+        }
+
+        .field input, .field select {
+            background: transparent; border: none; outline: none;
+            font-family: 'Space Mono', monospace; font-size: 22px;
+            font-weight: 700; color: var(--white); width: 100%;
+            cursor: none;
+            -moz-appearance: textfield;
+        }
+        .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+        .field select {
+            font-size: 15px; font-weight: 700;
+            -webkit-appearance: none; appearance: none;
+            background: transparent;
+        }
+        .field select option { background: #0a140a; color: var(--white); }
+
+        /* MODE TOGGLE */
+        .mode-row {
+            grid-column: span 2;
+        }
+        .mode-toggle {
+            display: flex; gap: 8px; margin-top: 4px;
+        }
+        .mode-btn {
+            flex: 1; padding: 10px;
+            font-family: 'Space Mono', monospace; font-size: 12px;
+            letter-spacing: 2px; font-weight: 700;
+            background: rgba(34,197,94,0.05);
+            border: 1px solid rgba(34,197,94,0.2);
+            border-radius: 3px; color: rgba(34,197,94,0.5);
+            cursor: none; transition: all 0.25s; text-transform: uppercase;
+        }
+        .mode-btn.active {
+            background: rgba(34,197,94,0.15);
+            border-color: var(--green); color: var(--green);
+            box-shadow: 0 0 12px rgba(34,197,94,0.2);
+        }
+
+        /* HIDDEN SELECT - driven by JS toggle */
+        #modo { display: none; }
+
+        .btn-generate {
+            width: 100%; padding: 16px;
+            font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800;
+            letter-spacing: 4px; text-transform: uppercase;
+            background: var(--green); color: #050a05;
+            border: none; border-radius: 3px; cursor: none;
+            position: relative; overflow: hidden;
+            transition: background 0.25s, transform 0.2s, box-shadow 0.25s;
+            margin-top: 12px;
+        }
+        .btn-generate::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.25), transparent);
+            opacity: 0; transition: opacity 0.25s;
+        }
+        .btn-generate:hover { background: var(--green-dark); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(34,197,94,0.3); }
+        .btn-generate:hover::before { opacity: 1; }
+        .btn-generate:active { transform: translateY(1px); }
+
+        /* STATS BAR */
+        .stats-bar {
+            position: relative; z-index: 10;
+            max-width: 680px; margin: 0 auto 32px;
+            padding: 0 20px;
+            display: none;
+            animation: fadeUp 0.4s ease both;
+        }
+        .stats-bar.visible { display: flex; gap: 10px; }
+        .stat-chip {
+            flex: 1; background: rgba(10,20,10,0.8);
+            border: 1px solid rgba(34,197,94,0.15);
+            border-radius: 4px; padding: 12px;
+            text-align: center; backdrop-filter: blur(8px);
+        }
+        .stat-num { font-family: 'Space Mono', monospace; font-size: 22px; font-weight: 700; color: var(--green); }
+        .stat-label { font-family: 'Space Mono', monospace; font-size: 9px; letter-spacing: 2px; color: rgba(240,255,244,0.3); margin-top: 4px; }
+
+        /* TABLES AREA */
+        .tablas-section {
+            position: relative; z-index: 10;
+            max-width: 1200px; margin: 0 auto;
+            padding: 0 20px 80px;
+        }
+
+        .section-header {
+            font-family: 'Space Mono', monospace; font-size: 11px;
+            letter-spacing: 3px; color: rgba(34,197,94,0.4);
+            margin-bottom: 24px; text-align: center;
+        }
+
+        .tablas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        /* TABLE CARD */
+        .tabla-card {
+            background: rgba(10,20,10,0.75);
+            border: 1px solid rgba(34,197,94,0.12);
+            border-radius: 6px;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+            transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+            animation: fadeUp 0.5s ease both;
+            position: relative;
+        }
+        .tabla-card::after {
+            content: ''; position: absolute; bottom: 0; left: 0;
+            height: 2px; width: 0%;
+            background: var(--green);
+            transition: width 0.4s ease;
+        }
+        .tabla-card:hover {
+            border-color: rgba(34,197,94,0.45);
+            box-shadow: 0 12px 36px rgba(34,197,94,0.1), 0 0 0 1px rgba(34,197,94,0.08);
+            transform: translateY(-3px);
+        }
+        .tabla-card:hover::after { width: 100%; }
+
+        .tabla-header {
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid rgba(34,197,94,0.1);
+            display: flex; align-items: baseline; justify-content: space-between;
+        }
+        .tabla-num {
+            font-size: 2rem; font-weight: 800;
+            background: linear-gradient(135deg, #fff, var(--green-glow));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .tabla-tag {
+            font-family: 'Space Mono', monospace; font-size: 10px;
+            letter-spacing: 2px; color: rgba(34,197,94,0.4);
+        }
+
+        /* OPERATIONS LIST */
+        ul { list-style: none; padding: 12px 0; }
+
+        li.op-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 7px 20px;
+            font-family: 'Space Mono', monospace; font-size: 13px;
+            border-bottom: 1px solid rgba(34,197,94,0.05);
+            transition: background 0.2s, padding-left 0.2s;
+            cursor: default;
+            opacity: 0;
+            transform: translateX(-8px);
+            animation: slideIn 0.3s ease forwards;
+        }
+        li.op-item:last-child { border-bottom: none; }
+        li.op-item:hover {
+            background: rgba(34,197,94,0.07);
+            padding-left: 28px;
+        }
+
+        .op-left { color: rgba(240,255,244,0.55); }
+        .op-result {
+            font-weight: 700; color: var(--green);
+            background: rgba(34,197,94,0.1);
+            padding: 2px 10px; border-radius: 2px;
+            border: 1px solid rgba(34,197,94,0.2);
+            min-width: 52px; text-align: center;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        li.op-item:hover .op-result {
+            background: rgba(34,197,94,0.18);
+            box-shadow: 0 0 10px rgba(34,197,94,0.2);
+        }
+
+        @keyframes slideIn {
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* HIGHLIGHT ON HOVER (number spotlight) */
+        .tabla-card:hover .tabla-num {
+            text-shadow: 0 0 30px rgba(74,222,128,0.4);
+        }
+
+        /* BACK BUTTON */
+        .volver { position: relative; z-index: 10; text-align: center; margin: 8px 0 60px; }
+        .btn-back {
+            font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700;
+            letter-spacing: 3px; padding: 12px 32px;
+            background: transparent; color: var(--green);
+            border: 1px solid rgba(34,197,94,0.35); border-radius: 3px;
+            cursor: none; text-transform: uppercase; text-decoration: none;
+            display: inline-block;
+            transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+        }
+        .btn-back:hover {
+            background: rgba(34,197,94,0.08); border-color: var(--green);
+            box-shadow: 0 0 20px rgba(34,197,94,0.15); transform: translateY(-1px);
+        }
+
+        /* RIPPLE */
+        .ripple {
+            position: absolute; border-radius: 50%;
+            background: rgba(34,197,94,0.25);
+            transform: scale(0);
+            animation: rippleAnim 0.6s linear;
+            pointer-events: none;
+        }
+        @keyframes rippleAnim {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        /* KEYFRAMES */
+        @keyframes fadeDown { from { opacity:0; transform:translateY(-18px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp   { from { opacity:0; transform:translateY(20px);  } to { opacity:1; transform:translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div class="cursor" id="cursor"></div>
+    <div class="cursor-ring" id="cursorRing"></div>
+    <div class="bg-grid"></div>
+    <div class="scanline"></div>
+    <div class="corner tl"></div><div class="corner tr"></div>
+    <div class="corner bl"></div><div class="corner br"></div>
+    <div class="particles" id="particles"></div>
+
+    <header>
+        <a href="/" class="back-link">← Volver al menú</a>
+        <div class="badge">EJERCICIO 02</div>
+        <h1>Tablas de Multiplicar<span>Generador Interactivo</span></h1>
+    </header>
+    <div class="divider"></div>
+
+    <!-- FORM -->
+    <div class="form-panel">
+        <form method="POST" id="mainForm">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="inicio">Número Inicial</label>
+                    <input type="number" id="inicio" name="inicio" required placeholder="2">
+                </div>
+                <div class="field">
+                    <label for="fin">Número Final</label>
+                    <input type="number" id="fin" name="fin" required placeholder="5">
+                </div>
+                <div class="field">
+                    <label for="incremento">Incremento</label>
+                    <input type="number" id="incremento" name="incremento" required placeholder="1">
+                </div>
+                <div class="field mode-row">
+                    <label>Modo de Orden</label>
+                    <div class="mode-toggle">
+                        <button type="button" class="mode-btn active" id="btnCreciente" onclick="setModo('creciente')">↑ Creciente</button>
+                        <button type="button" class="mode-btn" id="btnDecreciente" onclick="setModo('decreciente')">↓ Decreciente</button>
+                    </div>
+                    <select id="modo" name="modo">
+                        <option value="creciente">Creciente</option>
+                        <option value="decreciente">Decreciente</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn-generate" id="btnGen">
+                ⚡ Generar Tablas
+            </button>
+        </form>
+    </div>
+
+    {% if tablas %}
+    <!-- STATS BAR -->
+    <div class="stats-bar visible" id="statsBar">
+        <div class="stat-chip">
+            <div class="stat-num" id="statTablas">{{ tablas|length }}</div>
+            <div class="stat-label">TABLAS</div>
+        </div>
+        <div class="stat-chip">
+            <div class="stat-num" id="statOps">{{ tablas|length * 10 }}</div>
+            <div class="stat-label">OPERACIONES</div>
+        </div>
+        <div class="stat-chip">
+            <div class="stat-num">×</div>
+            <div class="stat-label">MULTIPLICAR</div>
+        </div>
+    </div>
+
+    <!-- TABLES -->
+    <div class="tablas-section">
+        <div class="section-header">TABLAS GENERADAS · HOVER PARA EXPLORAR</div>
+        <div class="tablas-grid" id="tablasGrid">
+            {% for tabla in tablas %}
+            <div class="tabla-card" style="animation-delay: {{ loop.index0 * 0.07 }}s">
+                <div class="tabla-header">
+                    <div class="tabla-num">{{ tabla.numero }}</div>
+                    <div class="tabla-tag">TABLA DEL {{ tabla.numero }}</div>
+                </div>
+                <ul>
+                    {% for op in tabla.operaciones %}
+                    <li class="op-item" style="animation-delay: {{ (loop.index0 * 0.04 + 0.1)|round(2) }}s">
+                        <span class="op-left">{{ op.split('=')[0] if '=' in op else op }}</span>
+                        <span class="op-result">{{ op.split('=')[1].strip() if '=' in op else '' }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="volver">
+        <a href="/" class="btn-back">← Menú Principal</a>
+    </div>
+
+    <script>
+        // CURSOR
+        const cursor = document.getElementById('cursor');
+        const ring   = document.getElementById('cursorRing');
+        let mx=0, my=0, rx=0, ry=0;
+
+        document.addEventListener('mousemove', e => {
+            mx = e.clientX; my = e.clientY;
+            cursor.style.left = mx + 'px'; cursor.style.top = my + 'px';
+        });
+        function animRing() {
+            rx += (mx-rx)*0.12; ry += (my-ry)*0.12;
+            ring.style.left = rx+'px'; ring.style.top = ry+'px';
+            requestAnimationFrame(animRing);
+        }
+        animRing();
+
+        document.querySelectorAll('button, a, input, select').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.width='20px'; cursor.style.height='20px';
+                cursor.style.background='rgba(34,197,94,0.5)';
+                ring.style.width='50px'; ring.style.height='50px';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.width='12px'; cursor.style.height='12px';
+                cursor.style.background='var(--green)';
+                ring.style.width='36px'; ring.style.height='36px';
+            });
+        });
+
+        // PARTICLES
+        const pc = document.getElementById('particles');
+        for(let i=0;i<16;i++){
+            const d=document.createElement('div'); d.className='particle';
+            d.style.left=Math.random()*100+'%';
+            d.style.animationDuration=(9+Math.random()*12)+'s';
+            d.style.animationDelay=(Math.random()*10)+'s';
+            pc.appendChild(d);
+        }
+
+        // MODE TOGGLE
+        function setModo(val) {
+            document.getElementById('modo').value = val;
+            document.getElementById('btnCreciente').classList.toggle('active', val==='creciente');
+            document.getElementById('btnDecreciente').classList.toggle('active', val==='decreciente');
+        }
+
+        // RIPPLE ON BUTTON
+        document.getElementById('btnGen').addEventListener('click', function(e) {
+            const r = document.createElement('span');
+            r.className = 'ripple';
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            r.style.width = r.style.height = size + 'px';
+            r.style.left = (e.clientX - rect.left - size/2) + 'px';
+            r.style.top  = (e.clientY - rect.top  - size/2) + 'px';
+            this.appendChild(r);
+            setTimeout(()=>r.remove(), 700);
+        });
+
+        // CARD TILT
+        document.querySelectorAll('.tabla-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const r = card.getBoundingClientRect();
+                const x = (e.clientX - r.left) / r.width  - 0.5;
+                const y = (e.clientY - r.top)  / r.height - 0.5;
+                card.style.transform = `perspective(600px) rotateY(${x*6}deg) rotateX(${-y*6}deg) translateY(-3px)`;
+            });
+            card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+        });
+
+        // ANIMATE COUNTERS
+        function animCount(el, target, duration=800) {
+            let start = null;
+            const step = ts => {
+                if(!start) start = ts;
+                const progress = Math.min((ts-start)/duration, 1);
+                el.textContent = Math.round(progress * target);
+                if(progress < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        }
+        const sT = document.getElementById('statTablas');
+        const sO = document.getElementById('statOps');
+        if(sT) animCount(sT, parseInt(sT.textContent));
+        if(sO) animCount(sO, parseInt(sO.textContent));
+
+        // KEYBOARD SHORTCUT: Enter to submit
+        document.addEventListener('keydown', e => {
+            if(e.key==='Enter' && document.activeElement.tagName !== 'TEXTAREA') {
+                document.getElementById('mainForm').requestSubmit();
+            }
+        });
+    </script>
+</body>
+</html>

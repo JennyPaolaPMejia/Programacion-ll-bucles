@@ -1,0 +1,6 @@
+# This file is used internally by FFMPEG.
+file 'file:C:/Users/Jenny Paola Pantoja/OneDrive/Documentos/Programacion II/proyecto matriz/media/videos/animacion/480p15/partial_movie_files/GraficaTaylor/1584795214_2132523964_223132457.mp4'
+file 'file:C:/Users/Jenny Paola Pantoja/OneDrive/Documentos/Programacion II/proyecto matriz/media/videos/animacion/480p15/partial_movie_files/GraficaTaylor/4072820271_2820527661_121892720.mp4'
+file 'file:C:/Users/Jenny Paola Pantoja/OneDrive/Documentos/Programacion II/proyecto matriz/media/videos/animacion/480p15/partial_movie_files/GraficaTaylor/4072820271_4218715047_2054393771.mp4'
+file 'file:C:/Users/Jenny Paola Pantoja/OneDrive/Documentos/Programacion II/proyecto matriz/media/videos/animacion/480p15/partial_movie_files/GraficaTaylor/4072820271_2310921401_1480717875.mp4'
+file 'file:C:/Users/Jenny Paola Pantoja/OneDrive/Documentos/Programacion II/proyecto matriz/media/videos/animacion/480p15/partial_movie_files/GraficaTaylor/4072820271_1754310298_1084874912.mp4'
