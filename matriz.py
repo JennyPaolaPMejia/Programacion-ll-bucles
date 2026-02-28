@@ -111,4 +111,5 @@ def ejercicio3():
         video="videos/GraficaTaylor.mp4"
     return render_template("ejercicio3.html", video=video)
 
-app.run(debug=True)
+if __name__ == "__main__":
+    app.run(debug=True)
